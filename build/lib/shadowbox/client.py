@@ -1,0 +1,91 @@
+from docker import DockerClient
+import utils
+from uuid import uuid4
+import os
+
+class ShadowBox():
+    def __init__(self, ip, port):
+        self.client = self._get_connection.get_connection(ip, port)
+
+    def run(self, image_name, source_code, files, mem_limit='512m') -> bytes:
+        name = 'shaddowbox-' + uuid4().hex
+        container = None
+
+        file_path = None
+        tar_file_path = None
+
+        try:
+            file_path = utils.create_temp_file_from_string(source_code.decode())
+            tar_file_path = utils.compress_file_to_tar(file_path)
+            file_container_path = '/app/' + os.path.basename(file_path)
+
+            container = self.client.containers.run(
+                image=image_name, 
+                working_dir='/app',
+                mem_limit=mem_limit, 
+                name=name, 
+                network_disabled=True,
+                network_mode='none', 
+                read_only=False,
+                detach=True,
+                command=['tail', '-f', '/dev/null'],
+            )
+            
+            with open(tar_file_path, 'rb') as tar_file:
+                container.put_archive('/app', tar_file.read())
+
+            for file in files:
+                tar_aux_file_path = utils.compress_file_to_tar(file)
+                with open(tar_aux_file_path, 'rb') as tar_aux_file:
+                    container.put_archive('/app', tar_aux_file.read())
+                
+                os.remove(tar_aux_file_path)
+
+            container.exec_run(['chmod', '777', file_container_path])
+            retorno = container.exec_run(['python3', file_container_path])
+            
+            if retorno.exit_code == 1:
+                raise Exception("Não foi possível executar o código-fonte Python!");
+
+            archive_bits = container.get_archive('/app/grafico_interativo.html')
+            archive_bits = b''.join(list(archive_bits[0]))
+
+            #TMP
+            with open('./grafico_interativo.html', 'wb') as f:
+                f.write(archive_bits)
+            #TMP
+
+            return archive_bits
+        except Exception as e:
+            print(f"Error: {e}")
+            raise e;
+        
+        finally:
+            if file_path:
+                os.remove(file_path)
+            if tar_file_path:
+                os.remove(tar_file_path)
+            
+            if container:
+                self.destroy(container)
+
+    def stop(self, container):
+        container.stop()
+    
+    def destroy(self, container):
+        container.kill()
+        container.remove()
+    
+    def list(self):
+        return self.client.containers.list()
+    
+    def _get_connection(self, ip, port) -> DockerClient:
+        if 'connection' not in self.__dict__:
+            self.connection = DockerClient(
+                    base_url='tcp://{}:{}'.format(ip, port), 
+                    version='auto', 
+                    timeout=10, 
+                    tls=False
+                )
+            
+        return self.connection
