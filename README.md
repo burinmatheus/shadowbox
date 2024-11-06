@@ -2,4 +2,4 @@
 python setup.py bdist_wheel
 
 # To install 
-pip install .\dist\shadowbox-1.0-py3-none-any.whl
+pip install .\dist\shadowbox-1.1-py3-none-any.whl --force-reinstall

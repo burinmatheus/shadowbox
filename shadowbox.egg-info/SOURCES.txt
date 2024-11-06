@@ -3,7 +3,6 @@ README.md
 setup.py
 shadowbox/__init__.py
 shadowbox/shadowbox.py
-shadowbox/utils.py
 shadowbox.egg-info/PKG-INFO
 shadowbox.egg-info/SOURCES.txt
 shadowbox.egg-info/dependency_links.txt

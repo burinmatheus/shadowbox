@@ -1,6 +1,7 @@
 from docker import DockerClient
 from uuid import uuid4
 import os
+import io
 import tempfile
 import tarfile
 
@@ -8,7 +9,7 @@ class ShadowBox():
     def __init__(self, ip, port):
         self.client = DockerConnector().get_connection(ip, port)
 
-    def run(self, image_name, source_code, files, output_file_name, mem_limit='512m') -> bytes:
+    def run(self, image_name, source_code, files, output_file_name, mem_limit='512m') -> str:
         name = 'shaddowbox-' + uuid4().hex
         container = None
 
@@ -48,10 +49,10 @@ class ShadowBox():
             if retorno.exit_code == 1:
                 raise Exception("Não foi possível executar o código-fonte Python!\nDetalhes: " + str(retorno.output));
 
-            archive_bits = container.get_archive('/app/' + output_file_name)
-            archive_bits = b''.join(list(archive_bits[0]))
-
-            return archive_bits
+            compacted_file = container.get_archive('/app/' + output_file_name)
+            
+            response = Utils.decompress_tar_to_str(compacted_file[0])
+            return response
         except Exception as e:
             print(f"Error: {e}")
             raise e;
@@ -61,7 +62,7 @@ class ShadowBox():
                 os.remove(file_path)
             if tar_file_path:
                 os.remove(tar_file_path)
-            
+
             if container:
                 self.destroy(container)
 
@@ -104,3 +105,16 @@ class Utils:
             tar.add(file_path, arcname=os.path.basename(file_path))
 
         return tar_file_path
+    
+    def decompress_tar_to_str(archive_bits) -> str:
+        file_data = io.BytesIO()
+        for chunk in archive_bits:
+            file_data.write(chunk)
+        file_data.seek(0)
+
+        with tarfile.open(fileobj=file_data, mode="r") as tar:
+            for member in tar.getmembers():
+                if member.isfile():
+                    extracted_file = tar.extractfile(member)
+                    if extracted_file:
+                        return extracted_file.read().decode('utf-8')

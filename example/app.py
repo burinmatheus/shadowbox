@@ -13,13 +13,12 @@ fig = px.bar(log_counts, x='Cliente', y='Quantidade de Logs', title='Quantidade 
 fig.write_html('/app/grafico_interativo.html')
 """
 
-archive_bits = ShadowBox('localhost', 2375).run(
-    image_name='registry.tecnicon.com.br/python_sandbox', 
+retorno = ShadowBox('localhost', 2375).run(
+    image_name='yourregistry.com/python_sandbox', 
     source_code=source_code,
     files=['./LogCompleto.csv'],
     output_file_name='grafico_interativo.html',
     mem_limit='512m'
 )
 
-with open('grafico_interativo.html', 'wb') as f:
-    f.write(archive_bits)
+print(retorno)
