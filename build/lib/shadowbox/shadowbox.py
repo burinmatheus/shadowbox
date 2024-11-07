@@ -17,7 +17,7 @@ class ShadowBox():
         tar_file_path = None
 
         try:
-            file_path = Utils.create_temp_file_from_string(source_code.decode())
+            file_path = Utils.create_temp_file_from_string(source_code)
             tar_file_path = Utils.compress_file_to_tar(file_path)
             file_container_path = '/app/' + os.path.basename(file_path)
 
@@ -90,7 +90,7 @@ class DockerConnector:
 
 class Utils: 
     def create_temp_file_from_string(content: str) -> str:
-        fd, temp_file = tempfile.mkstemp(suffix='.py')
+        fd, temp_file = tempfile.mkstemp(suffix='.txt')
         os.chmod(temp_file, 0o644)
 
         with os.fdopen(fd, 'w') as f:
@@ -99,7 +99,8 @@ class Utils:
         return temp_file
 
     def compress_file_to_tar(file_path: str) -> str:
-        tar_file_path = file_path + '.tar.gz'
+        fd, tar_file_path = tempfile.mkstemp(suffix='.tar.gz')
+        os.chmod(tar_file_path, 0o644)
 
         with tarfile.open(tar_file_path, "w:gz") as tar:
             tar.add(file_path, arcname=os.path.basename(file_path))
